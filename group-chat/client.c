@@ -14,5 +14,7 @@ int main(){
     char *message = "Ji Ji\n";
 
     send(clientSocketFD, message, 1024, 0);
+
+    close(clientSocketFD);
     return 0;
 }
