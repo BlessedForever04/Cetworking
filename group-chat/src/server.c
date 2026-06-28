@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include "util.h"
 #include <unistd.h>
+#include <string.h>
 
 int main(){
     uint16_t port = 5000;
@@ -25,25 +26,14 @@ int main(){
         return 1;
     }
 
-    struct sockaddr_in *clientAddressPtr;
-    socklen_t clientAddressSize = sizeof(struct sockaddr_in);
+    struct acceptedSocket *client = acceptIncomingConnection(serverSocketFD);
 
-    int clientSocketFD = accept(serverSocketFD,(struct sockaddr*) clientAddressPtr, &clientAddressSize);
+    receiveAndPrintIncomingData(serverSocketFD);
 
-    char response[1024];
-
-    while(1){
-        printf("Listening to client..\n");
-        int bytesReceived = recv(clientSocketFD, response, 1024, 0);
-        printf("Heard something..\n");
-        if(bytesReceived > 0){
-            response[bytesReceived] = '\0';
-            printf("From client: %s", response);
-        }
-    }
-
-    close(clientSocketFD);
-    close(serverSocketFD);
+    close(client->FD);
+    shutdown(serverSocketFD, SHUT_RDWR);
 
     return 0;
 }
+
+// Implement threading
