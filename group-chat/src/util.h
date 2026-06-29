@@ -22,6 +22,7 @@ void *receiveAndPrintIncomingData(void *arg){
         if(byteReceived > 0){
             if(strcmp(response, "bye\n") == 0){
                 break;
+                removeClientFromClientList(socketFD);
             }
             response[byteReceived] = '\0';
 
