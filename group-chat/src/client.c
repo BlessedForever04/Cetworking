@@ -9,6 +9,13 @@
 
 int main(){
     uint16_t port = 5000;
+    
+    char *name = NULL;
+    printf("Enter your name: ");
+    size_t lineSize = 0;
+    ssize_t charCount = getline(&name, &lineSize, stdin);
+    name[charCount-1] = '\0';
+
     int clientSocketFD = createTCPIpv4Socket(); 
     struct sockaddr_in *serverAddressPtr = createSocketAddress("127.0.0.1", port); 
 
@@ -19,11 +26,6 @@ int main(){
         return 1;
     }
 
-    char *name = NULL;
-    size_t lineSize = 0;
-    printf("Enter your name: ");
-    ssize_t charCount = getline(&name, &lineSize, stdin);
-    name[charCount-1] = '\0';
     send(clientSocketFD, name, 50, 0);
 
     char *message = NULL;
