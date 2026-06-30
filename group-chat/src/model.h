@@ -1,6 +1,13 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+struct response{
+    char sender[50];
+    char message[1024];
+};
 
 struct clientList{    
     struct client *clients;

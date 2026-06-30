@@ -14,6 +14,11 @@ int main(){
     printf("Enter your name: ");
     size_t lineSize = 0;
     ssize_t charCount = getline(&name, &lineSize, stdin);
+    if(charCount == -1){
+        perror("getline");
+        free(name);
+        return 1;
+    }
     name[charCount-1] = '\0';
 
     int clientSocketFD = createTCPIpv4Socket(); 
@@ -26,28 +31,29 @@ int main(){
         return 1;
     }
 
-    send(clientSocketFD, name, 50, 0);
+    send(clientSocketFD, name, strlen(name) + 1, 0);
 
     char *message = NULL;
-    char output[1024];
     
     pthread_t receiveThread;
     pthread_create(&receiveThread, NULL, receiveAndPrintDataFromServer, &clientSocketFD);
     
     while(1){
-        strcpy(output, name);
-        strcat(output, ": ");
-        charCount = getline(&message, &lineSize, stdin); 
-        strcat(output, message);
-        send(clientSocketFD, output, 1024, 0);
-        output[0] = '\0';
+        printf("You: ");
+        charCount = getline(&message, &lineSize, stdin);
+        struct response response = {0};
+        snprintf(response.sender, sizeof(response.sender), "%s", name);
+        snprintf(response.message, sizeof(response.message), "%s", message);
+
+        send(clientSocketFD, &response, sizeof(struct response), 0);
+
         if(strcmp(message, "bye\n") == 0){
             break;
         }
     }
 
-    printf("User left the chat\n");
-
+    free(name);
+    free(message);
     close(clientSocketFD);
     return 0;
 }

@@ -13,22 +13,45 @@ int createTCPIpv4Socket(){
     return socket(AF_INET, SOCK_STREAM, 0); // domain : AF_INET (IP4), type : SOCK_STREAM (TCP), protocol : 0 (Default for TCP)
 }
 
-void *receiveAndPrintIncomingData(void *arg){
+void removeClientFromClientList(int clientFD){
+    for(int i = 0; i < clientList.size; i++){
+        if(clientList.clients[i].clientFD == clientFD){
+            clientList.clients[i] = clientList.clients[--clientList.size];
+            break;
+        }
+    }
+}
+
+void *receiveAndBroadcastIncomingData(void *arg){
     int socketFD = *(int*)arg;
-    char response[1024];
+    struct response response;
     
     while(1){
-        int byteReceived = recv(socketFD, response, 1024, 0);
+        int byteReceived = recv(socketFD, &response, sizeof(struct response), 0);
         if(byteReceived > 0){
-            if(strcmp(response, "bye\n") == 0){
-                break;
-                removeClientFromClientList(socketFD);
-            }
-            response[byteReceived] = '\0';
+            if(strcmp(response.message, "bye\n") == 0){
+                printf("%s left the server\n", response.sender); 
 
-            for(int i = 0; i < clientList.size; i++){
-                if(clientList.clients[i].clientFD == socketFD) continue;
-                send(clientList.clients[i].clientFD, response, 1024, 0);
+                struct response serverNotice;
+                snprintf(serverNotice.sender, 7, "%s", "Server");
+                snprintf(serverNotice.message, sizeof(response.sender), "%s", response.sender);
+                strcat(serverNotice.message, " left the chat.\n");
+
+                for(int i = 0; i < clientList.size; i++){
+                    if(clientList.clients[i].clientFD != socketFD){
+                        send(clientList.clients->clientFD, &serverNotice, sizeof(serverNotice), 0);
+                    }
+                }
+                removeClientFromClientList(socketFD);
+                break;
+            }
+            else{                
+                response.message[byteReceived] = '\0';
+                
+                for(int i = 0; i < clientList.size; i++){
+                    if(clientList.clients[i].clientFD == socketFD) continue;
+                    send(clientList.clients[i].clientFD, &response, sizeof(struct response), 0);
+                }
             }
         }
     }
@@ -46,31 +69,24 @@ void addClientToClientList(char *name, int clientFD){
     clientList.clients[clientList.size-1].clientFD = clientFD;
 }
 
-void removeClientFromClientList(int clientFD){
-    for(int i = 0; i < clientList.size; i++){
-        if(clientList.clients[i].clientFD == clientFD){
-            clientList.clients[i] = clientList.clients[--clientList.size];
-            break;
-        }
-    }
-}
 
 void *receiveAndPrintDataFromServer(void *arg){
     int serverSocketFD = *(int*)arg;
-    char response[1024];
+    struct response response;
     while(1){
-        int byteReceived = recv(serverSocketFD, response, 1024, 0);
+        int byteReceived = recv(serverSocketFD, &response, sizeof(struct response), 0);
         if(byteReceived > 0){
-            response[byteReceived] = '\0';
-            printf("%s", response);
+            response.message[byteReceived] = '\0';
+            printf("%s: ", response.sender);
+            printf("%s", response.message);
         }
     }
     return NULL;
 }
 
-void receiveAndPrintIncomingDataOnSaperateThread(int clientFD){
+void receivingAndBroadcastIncomingDataOnSaperateThread(int clientFD){
     pthread_t clientThread;
-    pthread_create(&clientThread, NULL, receiveAndPrintIncomingData, &clientFD);
+    pthread_create(&clientThread, NULL, receiveAndBroadcastIncomingData, &clientFD);
 }
 
 void startAcceptingIncomingConnection(int serverSocketFD){
@@ -79,6 +95,6 @@ void startAcceptingIncomingConnection(int serverSocketFD){
         char name[50];
         recv(acceptedClient->FD, name, 50, 0);
         addClientToClientList(name, acceptedClient->FD);
-        receiveAndPrintIncomingDataOnSaperateThread(acceptedClient->FD);
+        receivingAndBroadcastIncomingDataOnSaperateThread(acceptedClient->FD);
     }
 }
