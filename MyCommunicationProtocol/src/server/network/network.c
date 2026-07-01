@@ -4,7 +4,9 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "network_manager.h"
+#include "network.h"
+#include "../protocol/protocol.h"
+#include "../../client/protocol/protocol.h"
 #include "../client manager/client_manager.h"
 
 int createTCPIpv4Socket(){
@@ -19,52 +21,30 @@ struct sockaddr_in* createSocketAddress(char *ip_address, uint16_t port){
     return address;
 }
 
-void *receiveAndBroadcastIncomingData(void *arg){
+void *receiveDataFromClient(void *arg){
     int socketFD = *(int*)arg;
-    struct response response;
     
+    struct packetHeader header = {0};
+
     while(1){
-        int byteReceived = recv(socketFD, &response, sizeof(struct response), 0);
+        int byteReceived = recv(socketFD, &header, sizeof(header), 0);
         if(byteReceived > 0){
-            if(strcmp(response.message, "bye\n") == 0){
-                printf("%s left the server\n", response.sender); 
-
-                struct response serverNotice;
-                snprintf(serverNotice.sender, 7, "%s", "Server");
-                snprintf(serverNotice.message, sizeof(response.sender), "%s", response.sender);
-                strcat(serverNotice.message, " left the chat.\n");
-
-                for(int i = 0; i < clientList.size; i++){
-                    if(clientList.clients[i].clientFD != socketFD){
-                        send(clientList.clients->clientFD, &serverNotice, sizeof(serverNotice), 0);
-                    }
-                }
-                removeClientFromClientList(socketFD);
-                break;
-            }
-            else{                
-                response.message[byteReceived] = '\0';
-                
-                for(int i = 0; i < clientList.size; i++){
-                    if(clientList.clients[i].clientFD == socketFD) continue;
-                    send(clientList.clients[i].clientFD, &response, sizeof(struct response), 0);
-                }
-            }
+            manageServerProtocol(header, socketFD);
         }
     }
     close(socketFD);
     return NULL;
 }
 
-void *receiveAndPrintDataFromServer(void *arg){
+void *receiveDataFromServer(void *arg){ // here the function has to be of *function(*void) type to be used for pthread
     int serverSocketFD = *(int*)arg;
-    struct response response;
+    
+    struct packetHeader header = {0};
+
     while(1){
-        int byteReceived = recv(serverSocketFD, &response, sizeof(struct response), 0);
+        int byteReceived = recv(serverSocketFD, &header, sizeof(header), 0);
         if(byteReceived > 0){
-            response.message[byteReceived] = '\0';
-            printf("%s: ", response.sender);
-            printf("%s", response.message);
+            manageClientProtocol(header, serverSocketFD);
         }
     }
     return NULL;
@@ -72,15 +52,16 @@ void *receiveAndPrintDataFromServer(void *arg){
 
 void receivingAndBroadcastIncomingDataOnSaperateThread(int clientFD){
     pthread_t clientThread;
-    pthread_create(&clientThread, NULL, receiveAndBroadcastIncomingData, &clientFD);
+    int *clientFDPtr = malloc(sizeof(int));
+    *clientFDPtr = clientFD;
+    pthread_create(&clientThread, NULL, receiveDataFromClient, clientFDPtr);
+    pthread_detach(clientThread);
 }
 
 void startAcceptingIncomingConnection(int serverSocketFD){
     while(1){
         struct acceptedConnection *acceptedClient = acceptIncomingConnection(serverSocketFD);
-        char name[50];
-        recv(acceptedClient->FD, name, 50, 0);
-        addClientToClientList(name, acceptedClient->FD);
+        addClientToClientList(acceptedClient->FD);
         receivingAndBroadcastIncomingDataOnSaperateThread(acceptedClient->FD);
     }
 }

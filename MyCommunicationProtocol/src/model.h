@@ -61,15 +61,15 @@ typedef enum {
     PACKET_REMOVE_FRIEND 
 } packetType;
 
-struct response{
-    char sender[50];
-    char message[1024];
+struct packetHeader{
+    packetType type;
+    uint32_t payloadSize;
 };
 
-typedef struct {
-    uint32_t type;
-    uint32_t size;
-} packetHeader;
+struct messagePacket{
+    char *sender;
+    char *message;
+};
 
 struct clientList{    
     struct client *clients;
@@ -78,7 +78,7 @@ struct clientList{
 };
 
 struct client{
-    char name[50];
+    char *name;
     int clientFD;
 };
 

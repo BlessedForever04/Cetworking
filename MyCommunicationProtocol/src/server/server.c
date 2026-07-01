@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "network manager/network_manager.h"
+#include "network/network.h"
 
 int main(){
     uint16_t port = 5000;
@@ -28,5 +28,3 @@ int main(){
     shutdown(serverSocketFD, SHUT_RDWR);
     return 0;
 }
-
-// Implement threading

@@ -6,6 +6,6 @@
 extern struct clientList clientList;
 
 void removeClientFromClientList(int clientFD);
-void addClientToClientList(char *name, int clientFD);
+void addClientToClientList(int clientFD);
 
 #endif

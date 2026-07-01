@@ -13,12 +13,21 @@ void removeClientFromClientList(int clientFD){
     }
 }
 
-void addClientToClientList(char *name, int clientFD){
+void addClientToClientList(int clientFD){
+    char name[50];
+    ssize_t byteReceived = recv(clientFD, name, sizeof(name) - 1, 0);
+    if(byteReceived <= 0){
+        return;
+    }
+    name[byteReceived] = '\0';
+
     if(clientList.size == clientList.capacity){
         if(clientList.capacity == 0) clientList.capacity = 1;
         clientList.capacity = clientList.capacity * 2;
         clientList.clients = realloc(clientList.clients, sizeof(struct client) * clientList.capacity);
     }
-    strcpy(clientList.clients[clientList.size++].name, name);
-    clientList.clients[clientList.size-1].clientFD = clientFD;
+    clientList.clients[clientList.size].name = malloc(strlen(name) + 1);
+    strcpy(clientList.clients[clientList.size].name, name);
+    clientList.clients[clientList.size].clientFD = clientFD;
+    clientList.size++;
 }
